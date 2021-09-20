@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -e
+
+describe() {
+    echo -e "Set up a Pod-based port-forwarder to a service behind the Kubernetes cluster."
+}
+
+help() {
+  echo -e "
+Usage:
+  forward [-n namespace] host port
+
+Examples:
+  kubectl forward database.nonexisting.com 5432
+"
+
+  exit 1
+}
+
+namespace="default"
+while getopts "hn:" opt; do
+    case "$opt" in
+    h)
+        describe
+        help
+        ;;
+    n)  namespace="$OPTARG"
+        ;;
+    esac
+done
+shift $((OPTIND-1))
+
+host=$1
+port=$2
+
+if [ -z $host ] || [ -z $port ]
+then
+    help
+fi
+
+if ! [[ $port =~ ^[0-9]+$ ]]
+then
+    help
+fi
+
+suffix=$(openssl rand -hex 3)
+
+cleanup() {
+    kubectl delete pod -n $namespace forwarder-$suffix 2>&1 >/dev/null
+    kubectl wait --for=delete pod/forwarder-$suffix 2>&1 >/dev/null
+}
+
+trap cleanup SIGINT
+
+cat <<HERE | kubectl -n $namespace create -f 2>&1 >/dev/null -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: forwarder-$suffix
+  namespace: $namespace
+  labels:
+    run : forwarder-$suffix
+spec:
+  containers:
+    - name: forwarder
+      image: alpine/socat:latest
+      args:
+        - TCP4-LISTEN:${port},fork,reuseaddr
+        - TCP:${host}:${port}
+HERE
+
+kubectl wait -n $namespace --for=condition=Ready pod/forwarder-$suffix 2>&1 >/dev/null
+kubectl port-forward -n $namespace pod/forwarder-$suffix $port:$port
