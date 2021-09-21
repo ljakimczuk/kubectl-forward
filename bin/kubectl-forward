@@ -11,7 +11,8 @@ Usage:
   forward [-n namespace] host port
 
 Examples:
-  kubectl forward database.nonexisting.com 5432
+  kubectl forward backend.123456789012.eu-west-1.rds.amazonaws.com 5432
+  kubectl forward redis.123456789012.euw1.cache.amazonaws.com 6379
 "
 
   exit 1
