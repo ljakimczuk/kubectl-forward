@@ -36,7 +36,7 @@ $ psql -h localhost -U postgresql -d postgres
 Password for user postgresql:
 ```
 
-#### AWS Redis
+#### AWS Redis example
 
 In order to forward traffic to the Redis service use:
 
