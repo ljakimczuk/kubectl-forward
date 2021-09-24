@@ -11,7 +11,7 @@ These instructions will get you a copy of this plugin up and running.
 To install the plugin, execute the following command:
 
 ```
-sudo curl -L https://github.com/ljakimczuk/kubectl-forward/raw/master/bin/kubectl-forward -o /usr/local/bin/kubectl-forward
+sudo curl -L https://raw.githubusercontent.com/ljakimczuk/kubectl-forward/main/bin/kubectl-forward -o /usr/local/bin/kubectl-forward
 sudo chmod a+x /usr/local/bin/kubectl-forward
 ```
 
