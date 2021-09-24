@@ -8,11 +8,20 @@ describe() {
 help() {
   echo -e "
 Usage:
-  forward [-n namespace] host port
+  forward [-n namespace] host [sport:]dport
 
 Examples:
+  # Forward TCP traffic to the RDS host from your local 5432 port.
   kubectl forward backend.123456789012.eu-west-1.rds.amazonaws.com 5432
+
+  # Forward TCP  traffic the the Redis host from your local 6379 port.
   kubectl forward redis.123456789012.euw1.cache.amazonaws.com 6379
+
+  # Forward TCP traffic to the RDS host from your local 50000 port.
+  kubectl forward backend.123456789012.eu-west-1.rds.amazonaws.com 50000:5432
+
+  # Forward TCP  traffic the the Redis host from your local 50000 port.
+  kubectl forward redis.123456789012.euw1.cache.amazonaws.com 50000:6379
 "
 
   exit 1
@@ -32,14 +41,15 @@ done
 shift $((OPTIND-1))
 
 host=$1
-port=$2
+sport=$(echo $2 | cut -d ":" -f1)
+dport=$(echo $2 | cut -d ":" -f2)
 
-if [ -z $host ] || [ -z $port ]
+if [ -z $host ] || [ -z $dport ]
 then
     help
 fi
 
-if ! [[ $port =~ ^[0-9]+$ ]]
+if ! [[ $sport =~ ^[0-9]+$ ]] || ! [[ $dport =~ ^[0-9]+$ ]]
 then
     help
 fi
@@ -66,9 +76,9 @@ spec:
     - name: forwarder
       image: alpine/socat:latest
       args:
-        - TCP4-LISTEN:${port},fork,reuseaddr
-        - TCP:${host}:${port}
+        - TCP4-LISTEN:${dport},fork,reuseaddr
+        - TCP:${host}:${dport}
 HERE
 
 kubectl wait -n $namespace --for=condition=Ready pod/forwarder-$suffix 2>&1 >/dev/null
-kubectl port-forward -n $namespace pod/forwarder-$suffix $port:$port
+kubectl port-forward -n $namespace pod/forwarder-$suffix $sport:$dport
