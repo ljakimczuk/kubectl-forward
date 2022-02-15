@@ -8,7 +8,7 @@ describe() {
 help() {
   echo -e "
 Usage:
-  forward [-n namespace] host [sport:]dport
+  forward [--context context] [-n namespace] host [sport:]dport
 
 Examples:
   # Forward TCP traffic to the RDS host from your local 5432 port.
@@ -27,14 +27,24 @@ Examples:
   exit 1
 }
 
+context=$(kubectl config current-context)
 namespace="default"
-while getopts "hn:" opt; do
+while getopts "hn:-:" opt; do
     case "$opt" in
     h)
         describe
         help
         ;;
     n)  namespace="$OPTARG"
+        ;;
+    -)
+        case "${OPTARG}" in
+          context)  context="${!OPTIND}"
+                    OPTIND=$((OPTIND+1))
+                    ;;
+          *)  OPTIND=$((OPTIND+1))
+              ;;
+        esac
         ;;
     esac
 done
@@ -57,13 +67,13 @@ fi
 suffix=$(openssl rand -hex 3)
 
 cleanup() {
-    kubectl delete pod -n $namespace forwarder-$suffix 2>&1 >/dev/null
-    kubectl wait --for=delete pod/forwarder-$suffix 2>&1 >/dev/null
+    kubectl delete pod --context $context -n $namespace forwarder-$suffix 2>&1 >/dev/null
+    kubectl wait --context $context -n $namespace --for=delete pod/forwarder-$suffix 2>&1 >/dev/null
 }
 
 trap cleanup SIGINT
 
-cat <<HERE | kubectl -n $namespace create -f 2>&1 >/dev/null -
+cat <<HERE | kubectl --context $context -n $namespace create -f 2>&1 >/dev/null -
 apiVersion: v1
 kind: Pod
 metadata:
@@ -80,5 +90,5 @@ spec:
         - TCP:${host}:${dport}
 HERE
 
-kubectl wait -n $namespace --for=condition=Ready pod/forwarder-$suffix 2>&1 >/dev/null
-kubectl port-forward -n $namespace pod/forwarder-$suffix $sport:$dport
+kubectl wait --context $context -n $namespace --for=condition=Ready pod/forwarder-$suffix 2>&1 >/dev/null
+kubectl port-forward --context $context -n $namespace pod/forwarder-$suffix $sport:$dport
